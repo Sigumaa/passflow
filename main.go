@@ -14,33 +14,17 @@ import (
 
 var (
 	rdb *redis.Client
-	ctx = context.Background()
 )
 
-func init() {
-	r := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: "",
-		DB:       0,
-		PoolSize: 1000,
-	})
-
-	rdb = r
-}
-
 func main() {
-	e := echo.New()
-	e.Use(middleware.Logger())
-	e.GET("/ping", func(c echo.Context) error {
-		ping, err := rdb.Ping(ctx).Result()
-		if err != nil {
-			c.JSON(500, err.Error())
-		}
-		return c.JSON(200, ping)
-	})
+	rdb = initRedis()
+	defer rdb.Close()
+
+	e := initEcho()
 
 	go func() {
-		if err := e.Start(":1323"); err != nil && err != http.ErrServerClosed {
+		addr := ":1323"
+		if err := e.Start(addr); err != nil && err != http.ErrServerClosed {
 			e.Logger.Fatal("shutting down the server")
 		}
 	}()
@@ -49,9 +33,36 @@ func main() {
 	signal.Notify(quit, os.Interrupt)
 	<-quit
 
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := e.Shutdown(ctx); err != nil {
 		e.Logger.Fatal(err)
 	}
+}
+
+func initRedis() *redis.Client {
+	r := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "",
+		DB:       0,
+		PoolSize: 1000,
+	})
+
+	return r
+}
+
+func initEcho() *echo.Echo {
+	e := echo.New()
+	e.Use(middleware.Logger())
+	e.GET("/ping", ping)
+
+	return e
+}
+
+func ping(c echo.Context) error {
+	ping, err := rdb.Ping(context.Background()).Result()
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+	return c.JSON(http.StatusOK, ping)
 }
