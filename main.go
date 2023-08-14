@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -23,10 +25,15 @@ func init() {
 }
 
 func main() {
-	ping, err := rdb.Ping(ctx).Result()
-	if err != nil {
-		panic(err)
-	}
+	e := echo.New()
+	e.Use(middleware.Logger())
+	e.GET("/ping", func(c echo.Context) error {
+		ping, err := rdb.Ping(ctx).Result()
+		if err != nil {
+			c.JSON(500, err.Error())
+		}
+		return c.JSON(200, ping)
+	})
 
-	println(ping)
+	e.Logger.Fatal(e.Start(":1323"))
 }
