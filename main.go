@@ -18,7 +18,7 @@ import (
 var (
 	rdb *redis.Client
 
-	mutex = &sync.Mutex{}
+	mutex sync.Mutex
 )
 
 type UserPosition struct {
