@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/redis/go-redis/v9"
@@ -16,6 +19,13 @@ var (
 	rdb *redis.Client
 )
 
+func init() {
+	if err := godotenv.Load(); err != nil {
+		fmt.Println("Error loading .env file")
+		return
+	}
+}
+
 func main() {
 	rdb = initRedis()
 	defer rdb.Close()
@@ -23,8 +33,8 @@ func main() {
 	e := initEcho()
 
 	go func() {
-		addr := ":1323"
-		if err := e.Start(addr); err != nil && err != http.ErrServerClosed {
+		echoAddr := fmt.Sprintf(":%s", os.Getenv("ECHO_ADDR"))
+		if err := e.Start(echoAddr); err != nil && err != http.ErrServerClosed {
 			e.Logger.Fatal("shutting down the server")
 		}
 	}()
@@ -41,11 +51,15 @@ func main() {
 }
 
 func initRedis() *redis.Client {
+	addr := fmt.Sprintf("%s:%s", os.Getenv("REDIS_HOST"), os.Getenv("REDIS_ADDR"))
+	db, _ := strconv.Atoi(os.Getenv("REDIS_DB"))
+	pool, _ := strconv.Atoi(os.Getenv("REDIS_POOL"))
+
 	r := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: "",
-		DB:       0,
-		PoolSize: 1000,
+		Addr:     addr,
+		Password: os.Getenv("REDIS_PWD"),
+		DB:       db,
+		PoolSize: pool,
 	})
 
 	return r
