@@ -21,7 +21,7 @@ var (
 	mutex sync.Mutex
 )
 
-type UserPosition struct {
+type Position struct {
 	ID  string  `json:"id"`
 	Lat float64 `json:"lat"`
 	Lon float64 `json:"lon"`
@@ -124,7 +124,7 @@ func getUser(c echo.Context) error {
 
 }
 
-func getNearbyUsers(u string) ([]UserPosition, error) {
+func getNearbyUsers(u string) ([]Position, error) {
 	res, err := rdb.GeoRadiusByMember(context.Background(), "users", u, &redis.GeoRadiusQuery{
 		Radius:      5,
 		Unit:        "km",
@@ -138,7 +138,7 @@ func getNearbyUsers(u string) ([]UserPosition, error) {
 		return nil, err
 	}
 
-	var userPositions []UserPosition
+	var userPositions []Position
 	for _, v := range res {
 		if v.Name == u {
 			continue
@@ -155,13 +155,13 @@ func getNearbyUsers(u string) ([]UserPosition, error) {
 	return userPositions, nil
 }
 
-func getUserPosition(u string) (UserPosition, error) {
+func getUserPosition(u string) (Position, error) {
 	ll, err := rdb.GeoPos(context.Background(), "users", u).Result()
 	if err != nil {
-		return UserPosition{}, err
+		return Position{}, err
 	}
 
-	return UserPosition{
+	return Position{
 		ID:  u,
 		Lat: ll[0].Latitude,
 		Lon: ll[0].Longitude,
@@ -172,7 +172,7 @@ func postUser(c echo.Context) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	u := new(UserPosition)
+	u := new(Position)
 	if err := c.Bind(u); err != nil {
 		return err
 	}
