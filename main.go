@@ -44,22 +44,9 @@ func main() {
 
 	e := initEcho()
 
-	go func() {
-		echoAddr := fmt.Sprintf(":%s", os.Getenv("ECHO_ADDR"))
-		if err := e.Start(echoAddr); err != nil && err != http.ErrServerClosed {
-			e.Logger.Fatal("shutting down the server")
-		}
-	}()
+	go startServer(e)
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt)
-	<-quit
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	if err := e.Shutdown(ctx); err != nil {
-		e.Logger.Fatal(err)
-	}
+	waitForInterrupt(e)
 }
 
 func initRedis() *redis.Client {
@@ -86,6 +73,25 @@ func initEcho() *echo.Echo {
 	return e
 }
 
+func startServer(e *echo.Echo) {
+	echoAddr := fmt.Sprintf(":%s", os.Getenv("ECHO_ADDR"))
+	if err := e.Start(echoAddr); err != nil && err != http.ErrServerClosed {
+		e.Logger.Fatal("shutting down the server")
+	}
+}
+
+func waitForInterrupt(e *echo.Echo) {
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt)
+	<-quit
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := e.Shutdown(ctx); err != nil {
+		e.Logger.Fatal(err)
+	}
+}
+
 func ping(c echo.Context) error {
 	ping, err := rdb.Ping(context.Background()).Result()
 	if err != nil {
@@ -103,55 +109,63 @@ func getUser(c echo.Context) error {
 
 	u := c.Param("id")
 
-	res, err := rdb.GeoRadiusByMember(context.Background(), "users", u, &redis.GeoRadiusQuery{
-		Radius:      5,
-		Unit:        "km",
-		WithGeoHash: false,
-		WithCoord:   false,
-		WithDist:    false,
-		Count:       100,
-		Sort:        "ASC",
-	}).Result()
+	res, err := getNearbyUsers(u)
 	if err != nil {
-		return err
-	}
-
-	// このresには自分自身も含まれているので、自分自身を除外する
-	for i, v := range res {
-		if v.Name == u {
-			res = append(res[:i], res[i+1:]...)
-			break
-		}
+		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
 	if len(res) == 0 {
 		return c.JSON(http.StatusOK, Message{Message: "No Users around you"})
 	}
 
-	// GeoRadiusByMemberから返ってくるデータはName以外0が返ってくる(俺の実装ミスかもしれない)
-	// なので、Name以外を0から正しい値に変換する
-	r := make([]UserPosition, len(res))
-	for i, v := range res {
-		name := v.Name
+	c.Logger().Printf("ID: %s, Lat: %f, Lon: %f\n", u, res[0].Lat, res[0].Lon)
 
-		ll, err := rdb.GeoPos(context.Background(), "users", name).Result()
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, err.Error())
-		}
-		lat := ll[0].Latitude
-		lon := ll[0].Longitude
+	return c.JSON(http.StatusOK, res)
 
-		r[i] = UserPosition{
-			ID:  name,
-			Lat: lat,
-			Lon: lon,
-		}
+}
+
+func getNearbyUsers(u string) ([]UserPosition, error) {
+	res, err := rdb.GeoRadiusByMember(context.Background(), "users", u, &redis.GeoRadiusQuery{
+		Radius:      5,
+		Unit:        "km",
+		WithGeoHash: false,
+		WithCoord:   true,
+		WithDist:    false,
+		Count:       100,
+		Sort:        "ASC",
+	}).Result()
+	if err != nil {
+		return nil, err
 	}
 
-	c.Logger().Printf("ID: %s, Lat: %f, Lon: %f\n", u, r[0].Lat, r[0].Lon)
+	var userPositions []UserPosition
+	for _, v := range res {
+		if v.Name == u {
+			continue
+		}
 
-	return c.JSON(http.StatusOK, r)
+		up, err := getUserPosition(v.Name)
+		if err != nil {
+			return nil, err
+		}
 
+		userPositions = append(userPositions, up)
+	}
+
+	return userPositions, nil
+}
+
+func getUserPosition(u string) (UserPosition, error) {
+	ll, err := rdb.GeoPos(context.Background(), "users", u).Result()
+	if err != nil {
+		return UserPosition{}, err
+	}
+
+	return UserPosition{
+		ID:  u,
+		Lat: ll[0].Latitude,
+		Lon: ll[0].Longitude,
+	}, nil
 }
 
 func postUser(c echo.Context) error {
@@ -175,9 +189,7 @@ func postUser(c echo.Context) error {
 		return err
 	}
 
-	// logを出力する
 	c.Logger().Printf("ID: %s, Lat: %f, Lon: %f\n", u.ID, u.Lat, u.Lon)
 
-	// 200 u を返す
 	return c.JSON(http.StatusOK, u)
 }
