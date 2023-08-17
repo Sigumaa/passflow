@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"context"
@@ -11,14 +11,14 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func startServer(e *echo.Echo) {
+func Start(e *echo.Echo) {
 	echoAddr := fmt.Sprintf(":%s", os.Getenv("ECHO_ADDR"))
 	if err := e.Start(echoAddr); err != nil && err != http.ErrServerClosed {
 		e.Logger.Fatal("shutting down the server")
 	}
 }
 
-func waitForInterrupt(e *echo.Echo) {
+func WaitForInterrupt(e *echo.Echo) {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
 	<-quit

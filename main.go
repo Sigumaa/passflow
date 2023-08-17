@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/Sigumaa/passflow/server"
 	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
 )
@@ -22,9 +23,9 @@ func main() {
 
 	e := setRoutes(rdb)
 
-	go startServer(e)
+	go server.Start(e)
 
-	waitForInterrupt(e)
+	server.WaitForInterrupt(e)
 }
 
 func initRedis() *redis.Client {
