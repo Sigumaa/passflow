@@ -12,7 +12,7 @@ func setRoutes(rdb *redis.Client) *echo.Echo {
 
 	pos := e.Group("/pos")
 	{
-		pos.GET("/:id", dummyHandler())
+		pos.GET("/", dummyHandler())
 	}
 
 	info := e.Group("/info")
@@ -21,15 +21,11 @@ func setRoutes(rdb *redis.Client) *echo.Echo {
 		info.POST("/:id", dummyHandler())
 	}
 
-	e.GET("/user/:id", handler.GetUser(rdb))
-	e.POST("/user", handler.PostUser(rdb))
-
 	return e
 }
 
 func dummyHandler() echo.HandlerFunc {
 	return func(c echo.Context) error {
-		id := c.Param("id")
-		return c.String(200, "not implemented!"+id)
+		return c.String(200, "not implemented!")
 	}
 }
