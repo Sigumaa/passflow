@@ -57,3 +57,15 @@ func GetUserInfo() echo.HandlerFunc {
 		return c.JSON(http.StatusOK, store[id])
 	}
 }
+
+func GetFriends(id string) []string {
+	return store[id].Friends
+}
+
+func AddFriend(id string, friend string) {
+	before := store[id].Friends
+	store[id] = UserInfo{
+		ReqUserInfo: store[id].ReqUserInfo,
+		Friends:     append(before, friend),
+	}
+}
