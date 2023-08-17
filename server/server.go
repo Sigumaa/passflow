@@ -23,6 +23,8 @@ func WaitForInterrupt(e *echo.Echo) {
 	signal.Notify(quit, os.Interrupt)
 	<-quit
 
+	e.Logger.Info("shutting down the server")
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := e.Shutdown(ctx); err != nil {

@@ -17,6 +17,9 @@ func init() {
 	}
 }
 
+// ハッカソン締め切り前日駆動 助けて～
+// キュレェが全部悪い
+
 func main() {
 	rdb := initRedis()
 	defer rdb.Close()
