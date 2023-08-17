@@ -45,7 +45,7 @@ type Message struct {
 // "cnt": 0,
 // "users": []
 // を返す
-func SetUser(rad float64, rdb *redis.Client) echo.HandlerFunc {
+func SetUserPos(rad float64, rdb *redis.Client) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		mutex.Lock()
 		defer mutex.Unlock()

@@ -12,13 +12,13 @@ func setRoutes(rdb *redis.Client) *echo.Echo {
 
 	pos := e.Group("/pos")
 	{
-		pos.POST("", handler.SetUser(5, rdb))
+		pos.POST("", handler.SetUserPos(5, rdb))
 	}
 
 	info := e.Group("/info")
 	{
-		info.GET("", dummyHandler())
-		info.POST("", dummyHandler())
+		info.GET("/:id", handler.GetUserInfo())
+		info.POST("", handler.SetUserInfo())
 	}
 
 	return e
