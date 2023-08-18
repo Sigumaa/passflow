@@ -89,6 +89,9 @@ Postmanなどを使うと便利です
                 ],
                 "likeCollection": {
                     "TypeScript": 2
+                },
+                "record": {
+                    "2023-08-18": 2
                 }
             }
         ```
