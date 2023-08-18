@@ -6,6 +6,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+// TODO: 永続化する　当たり前
 var (
 	store = make(map[string]UserInfo)
 )
