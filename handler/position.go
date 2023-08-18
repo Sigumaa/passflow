@@ -99,6 +99,7 @@ func SetUserPos(rad float64, rdb *redis.Client) echo.HandlerFunc {
 			} else {
 				AddFriend(name, v.ID)
 				IncrementLikeCollection(name, v.ID)
+				IncrementRecord(name)
 			}
 		}
 

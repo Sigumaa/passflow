@@ -1,8 +1,8 @@
 package handler
 
 import (
-	"maps"
 	"net/http"
+	"time"
 
 	"github.com/labstack/echo/v4"
 )
@@ -24,6 +24,7 @@ type UserInfo struct {
 	ReqUserInfo
 	Friends        []string       `json:"friends"`
 	LikeCollection map[string]int `json:"likeCollection"`
+	Record         map[string]int `json:"record"`
 }
 
 func SetUserInfo() echo.HandlerFunc {
@@ -49,6 +50,7 @@ func SetUserInfo() echo.HandlerFunc {
 				ReqUserInfo:    *u,
 				Friends:        []string{},
 				LikeCollection: make(map[string]int),
+				Record:         make(map[string]int),
 			}
 		}
 
@@ -87,11 +89,11 @@ func AddFriend(id string, friend string) {
 	mutex.Lock()
 	defer mutex.Unlock()
 	before := GetFriends(id)
-	like := GetLikeCollection(id)
 	store[id] = UserInfo{
 		ReqUserInfo:    store[id].ReqUserInfo,
 		Friends:        append(before, friend),
-		LikeCollection: maps.Clone(like),
+		LikeCollection: store[id].LikeCollection,
+		Record:         store[id].Record,
 	}
 }
 
@@ -110,6 +112,27 @@ func IncrementLikeCollection(id string, passedID string) {
 		ReqUserInfo:    store[id].ReqUserInfo,
 		Friends:        store[id].Friends,
 		LikeCollection: likeCollection,
+		Record:         store[id].Record,
 	}
 
+}
+
+func GetRecord(id string) map[string]int {
+	record := store[id].Record
+	return record
+}
+
+func IncrementRecord(id string) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	today := time.Now().Format("2006-01-02")
+	record := GetRecord(id)
+	record[today]++
+	store[id] = UserInfo{
+		ReqUserInfo:    store[id].ReqUserInfo,
+		Friends:        store[id].Friends,
+		LikeCollection: store[id].LikeCollection,
+		Record:         record,
+	}
 }
