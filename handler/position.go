@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"sync"
 
-	"slices"
-
 	"github.com/labstack/echo/v4"
 	"github.com/redis/go-redis/v9"
 )
@@ -83,36 +81,43 @@ func SetUserPos(rad float64, rdb *redis.Client) echo.HandlerFunc {
 			})
 		}
 
-		// Friendsの処理
-		// すでにFriendsにいるユーザーは追加しない
-		// すれ違い人数にも含まない
-
 		name := u.ID
 		friend := GetFriends(name)
-		// 既にFriendsにいたら、resから削除する
-		// Friendsに居なかったら、Friendsに追加する & LikeCollectionをIncrementする & resには残す
+
+		resIDs := []string{}
 		for _, v := range res {
-			if slices.Contains(friend, v.ID) {
-				res = slices.DeleteFunc(res, func(p Position) bool {
-					return p.ID == v.ID
-				})
-			} else {
-				AddFriend(name, v.ID)
-				IncrementLikeCollection(name, v.ID)
-				IncrementRecord(name)
-			}
+			resIDs = append(resIDs, v.ID)
 		}
 
-		if len(res) == 0 {
+		diffIDs := diff(friend, resIDs)
+
+		if len(diffIDs) == 0 {
 			return c.JSON(http.StatusOK, ResPos{
 				Cnt:   0,
 				Users: []Position{},
 			})
 		}
 
+		for _, v := range diffIDs {
+			AddFriend(name, v)
+			IncrementLikeCollection(name, v)
+			IncrementRecord(name)
+		}
+
+		// diffIDsのみを返す。
+		// diffIDsに存在するIDのlat,lonをresから取得し、nresに追加する
+		nres := []Position{}
+		for _, v := range diffIDs {
+			for _, vv := range res {
+				if v == vv.ID {
+					nres = append(nres, vv)
+				}
+			}
+		}
+
 		return c.JSON(http.StatusOK, ResPos{
-			Cnt:   len(res),
-			Users: res,
+			Cnt:   len(nres),
+			Users: nres,
 		})
 	}
 }
@@ -159,4 +164,21 @@ func getUserPosition(u string, rdb *redis.Client) (Position, error) {
 		Lat: ll[0].Latitude,
 		Lon: ll[0].Longitude,
 	}, nil
+}
+
+func diff(a, b []string) []string {
+	m := make(map[string]bool)
+
+	for _, v := range a {
+		m[v] = true
+	}
+
+	diff := []string{}
+	for _, v := range b {
+		if !m[v] {
+			diff = append(diff, v)
+		}
+	}
+
+	return diff
 }
