@@ -42,7 +42,7 @@ Postmanなどを使うと便利です
     
         ```json
         {
-            "message": "pong"
+            "message": "PONG"
         }
         ```
 
@@ -77,17 +77,20 @@ Postmanなどを使うと便利です
     - response
     
         ```json
-        {
-            "id": "shiyui",
-            "name": "しゆい",
-            "like": "Go",
-            "dislike": "",
-            "From": "Ibaraki",
-            "friends": [
-                "sayoi",
-                "kyre"
-            ]
-        }
+            {
+                "id": "shiyui",
+                "name": "しゆい",
+                "like": "Go",
+                "dislike": "",
+                "from": "Ibaraki",
+                "friends": [
+                    "kyre",
+                    "sayoi"
+                ],
+                "likeCollection": {
+                    "TypeScript": 2
+                }
+            }
         ```
 
 - [POST] /pos
