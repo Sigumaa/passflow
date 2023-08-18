@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"maps"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -21,7 +22,8 @@ type ReqUserInfo struct {
 
 type UserInfo struct {
 	ReqUserInfo
-	Friends []string `json:"friends"`
+	Friends        []string       `json:"friends"`
+	LikeCollection map[string]int `json:"likeCollection"`
 }
 
 func SetUserInfo() echo.HandlerFunc {
@@ -34,11 +36,20 @@ func SetUserInfo() echo.HandlerFunc {
 		}
 
 		if u.ID == "" || u.Name == "" {
-			return c.JSON(http.StatusBadRequest, "Bad Request")
+			return c.JSON(http.StatusBadRequest, Message{Message: "Bad Request"})
 		}
 
 		store[u.ID] = UserInfo{
 			ReqUserInfo: *u,
+		}
+
+		friends := GetFriends(u.ID)
+		if len(friends) == 0 {
+			store[u.ID] = UserInfo{
+				ReqUserInfo:    *u,
+				Friends:        []string{},
+				LikeCollection: make(map[string]int),
+			}
 		}
 
 		c.Logger().Printf("store: %v", store)
@@ -49,20 +60,18 @@ func SetUserInfo() echo.HandlerFunc {
 
 func GetUserInfo() echo.HandlerFunc {
 	return func(c echo.Context) error {
-		mutex.Lock()
-		defer mutex.Unlock()
 		id := c.Param("id")
 
 		if _, ok := store[id]; !ok {
-			return c.JSON(404, "Not Found")
+			return c.JSON(http.StatusBadRequest, Message{Message: "Not Found"})
 		}
 
 		friends := GetFriends(id)
-		if friends == nil {
-			store[id] = UserInfo{
-				ReqUserInfo: store[id].ReqUserInfo,
-				Friends:     []string{},
-			}
+
+		c.Logger().Printf("friends: %v", friends)
+
+		if len(friends) == 0 {
+			return c.JSON(http.StatusOK, store[id])
 		}
 
 		return c.JSON(http.StatusOK, store[id])
@@ -70,8 +79,6 @@ func GetUserInfo() echo.HandlerFunc {
 }
 
 func GetFriends(id string) []string {
-	mutex.Lock()
-	defer mutex.Unlock()
 	friends := store[id].Friends
 	return friends
 }
@@ -79,9 +86,30 @@ func GetFriends(id string) []string {
 func AddFriend(id string, friend string) {
 	mutex.Lock()
 	defer mutex.Unlock()
-	before := store[id].Friends
+	before := GetFriends(id)
+	like := GetLikeCollection(id)
 	store[id] = UserInfo{
-		ReqUserInfo: store[id].ReqUserInfo,
-		Friends:     append(before, friend),
+		ReqUserInfo:    store[id].ReqUserInfo,
+		Friends:        append(before, friend),
+		LikeCollection: maps.Clone(like),
 	}
+}
+
+func GetLikeCollection(id string) map[string]int {
+	likeCollection := store[id].LikeCollection
+	return likeCollection
+}
+
+func IncrementLikeCollection(id string, passedID string) {
+	mutex.Lock()
+	defer mutex.Unlock()
+	likeCollection := GetLikeCollection(id)
+	likeLanguage := store[passedID].Like
+	likeCollection[likeLanguage]++
+	store[id] = UserInfo{
+		ReqUserInfo:    store[id].ReqUserInfo,
+		Friends:        store[id].Friends,
+		LikeCollection: likeCollection,
+	}
+
 }

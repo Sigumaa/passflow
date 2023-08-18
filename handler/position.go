@@ -51,8 +51,6 @@ type Message struct {
 // 一度すれ違ったユーザーはFriendに追加しないかつ、すれ違い人数にも含まない
 func SetUserPos(rad float64, rdb *redis.Client) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		mutex.Lock()
-		defer mutex.Unlock()
 
 		u := new(Position)
 		if err := c.Bind(u); err != nil {
@@ -92,7 +90,7 @@ func SetUserPos(rad float64, rdb *redis.Client) echo.HandlerFunc {
 		name := u.ID
 		friend := GetFriends(name)
 		// 既にFriendsにいたら、resから削除する
-		// Friendsに居なかったら、Friendsに追加する　resには残す
+		// Friendsに居なかったら、Friendsに追加する & LikeCollectionをIncrementする & resには残す
 		for _, v := range res {
 			if slices.Contains(friend, v.ID) {
 				res = slices.DeleteFunc(res, func(p Position) bool {
@@ -100,6 +98,7 @@ func SetUserPos(rad float64, rdb *redis.Client) echo.HandlerFunc {
 				})
 			} else {
 				AddFriend(name, v.ID)
+				IncrementLikeCollection(name, v.ID)
 			}
 		}
 
