@@ -55,6 +55,14 @@ func GetUserInfo() echo.HandlerFunc {
 			return c.JSON(404, "Not Found")
 		}
 
+		friends := GetFriends(id)
+		if friends == nil {
+			store[id] = UserInfo{
+				ReqUserInfo: store[id].ReqUserInfo,
+				Friends:     []string{},
+			}
+		}
+
 		return c.JSON(http.StatusOK, store[id])
 	}
 }
