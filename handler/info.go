@@ -49,6 +49,8 @@ func SetUserInfo() echo.HandlerFunc {
 
 func GetUserInfo() echo.HandlerFunc {
 	return func(c echo.Context) error {
+		mutex.Lock()
+		defer mutex.Unlock()
 		id := c.Param("id")
 
 		if _, ok := store[id]; !ok {
@@ -68,10 +70,15 @@ func GetUserInfo() echo.HandlerFunc {
 }
 
 func GetFriends(id string) []string {
-	return store[id].Friends
+	mutex.Lock()
+	defer mutex.Unlock()
+	friends := store[id].Friends
+	return friends
 }
 
 func AddFriend(id string, friend string) {
+	mutex.Lock()
+	defer mutex.Unlock()
 	before := store[id].Friends
 	store[id] = UserInfo{
 		ReqUserInfo: store[id].ReqUserInfo,
