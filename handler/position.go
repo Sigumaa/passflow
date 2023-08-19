@@ -100,7 +100,7 @@ func SetUserPos(rad float64, rdb *redis.Client) echo.HandlerFunc {
 
 		for _, v := range diffIDs {
 			AddFriend(name, v)
-			IncrementLikeCollection(name, v)
+			IncrementCollections(name, v)
 			IncrementRecord(name)
 		}
 

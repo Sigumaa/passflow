@@ -20,11 +20,19 @@ type ReqUserInfo struct {
 	From    string `json:"from"`
 }
 
+type ckey string
+
+const (
+	Likek    ckey = "like"
+	Dislikek ckey = "dislike"
+	Fromk    ckey = "from"
+)
+
 type UserInfo struct {
 	ReqUserInfo
-	Friends        []string       `json:"friends"`
-	LikeCollection map[string]int `json:"likeCollection"`
-	Record         map[string]int `json:"record"`
+	Friends    []string                `json:"friends"`
+	Collection map[ckey]map[string]int `json:"collection"`
+	Record     map[string]int          `json:"record"`
 }
 
 func SetUserInfo() echo.HandlerFunc {
@@ -47,10 +55,10 @@ func SetUserInfo() echo.HandlerFunc {
 		friends := GetFriends(u.ID)
 		if len(friends) == 0 {
 			store[u.ID] = UserInfo{
-				ReqUserInfo:    *u,
-				Friends:        []string{},
-				LikeCollection: make(map[string]int),
-				Record:         make(map[string]int),
+				ReqUserInfo: *u,
+				Friends:     []string{},
+				Collection:  make(map[ckey]map[string]int),
+				Record:      make(map[string]int),
 			}
 		}
 
@@ -90,31 +98,51 @@ func AddFriend(id string, friend string) {
 	defer mutex.Unlock()
 	before := GetFriends(id)
 	store[id] = UserInfo{
-		ReqUserInfo:    store[id].ReqUserInfo,
-		Friends:        append(before, friend),
-		LikeCollection: store[id].LikeCollection,
-		Record:         store[id].Record,
+		ReqUserInfo: store[id].ReqUserInfo,
+		Friends:     append(before, friend),
+		Collection:  store[id].Collection,
+		Record:      store[id].Record,
 	}
 }
 
-func GetLikeCollection(id string) map[string]int {
-	likeCollection := store[id].LikeCollection
-	return likeCollection
+func IncrementCollections(id string, passedID string) {
+	for _, v := range []ckey{Likek, Dislikek, Fromk} {
+		IncrementCollection(id, v, passedID)
+	}
 }
 
-func IncrementLikeCollection(id string, passedID string) {
+func IncrementCollection(id string, key ckey, passedID string) {
 	mutex.Lock()
 	defer mutex.Unlock()
-	likeCollection := GetLikeCollection(id)
-	likeLanguage := store[passedID].Like
-	likeCollection[likeLanguage]++
-	store[id] = UserInfo{
-		ReqUserInfo:    store[id].ReqUserInfo,
-		Friends:        store[id].Friends,
-		LikeCollection: likeCollection,
-		Record:         store[id].Record,
+
+	collection := GetCollection(id)
+	if _, ok := collection[key]; !ok {
+		collection[key] = make(map[string]int)
 	}
 
+	var t string
+	switch key {
+	case Likek:
+		t = store[passedID].Like
+	case Dislikek:
+		t = store[passedID].Dislike
+	case Fromk:
+		t = store[passedID].From
+	}
+	collection[key][t]++
+
+	store[id] = UserInfo{
+		ReqUserInfo: store[id].ReqUserInfo,
+		Friends:     store[id].Friends,
+		Collection:  collection,
+		Record:      store[id].Record,
+	}
+
+}
+
+func GetCollection(id string) map[ckey]map[string]int {
+	collection := store[id].Collection
+	return collection
 }
 
 func GetRecord(id string) map[string]int {
@@ -130,9 +158,9 @@ func IncrementRecord(id string) {
 	record := GetRecord(id)
 	record[today]++
 	store[id] = UserInfo{
-		ReqUserInfo:    store[id].ReqUserInfo,
-		Friends:        store[id].Friends,
-		LikeCollection: store[id].LikeCollection,
-		Record:         record,
+		ReqUserInfo: store[id].ReqUserInfo,
+		Friends:     store[id].Friends,
+		Collection:  store[id].Collection,
+		Record:      record,
 	}
 }
