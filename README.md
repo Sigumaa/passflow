@@ -87,8 +87,18 @@ Postmanなどを使うと便利です
                     "kyre",
                     "sayoi"
                 ],
-                "likeCollection": {
-                    "TypeScript": 2
+                "collection": {
+                    "like": {
+                        "TypeScript": 2
+                    },
+                    "dislike": {
+                        "C": 1,
+                        "Python": 1
+                    },
+                    "from": {
+                        "Ibaraki": 1,
+                        "大阪": 1
+                    }
                 },
                 "record": {
                     "2023-08-18": 2
